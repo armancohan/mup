@@ -1,0 +1,21 @@
+{
+    "model_name_or_path": "google/pegasus-arxiv",
+    "tokenizer_name_or_path": "google/pegasus-arxiv",
+    "max_seq_len": 1024,
+    "max_decoder_length": 256,
+    "data_args": {
+        "batch_size": 4,
+        "eval_batch_size": 8,
+        "max_source_length": 1024
+    },
+    "compute_precision": 32,
+    "trainer_args": {
+        "gradient_accumulation_steps": 2
+    },
+    "generation": {
+        "max_generation_length": 256,
+        "length_penalty": 0.8,
+        "learning_rate": 5e-4,
+        "optimizer": "adafactor"
+    }
+}

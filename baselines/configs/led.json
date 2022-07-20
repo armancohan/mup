@@ -1,0 +1,19 @@
+{
+    "model_name_or_path": "allenai/led-large-16384-arxiv",
+    "tokenizer_name_or_path": "allenai/led-large-16384-arxiv",
+    "max_seq_len": 3072,
+    "max_decoder_length": 128,
+    "total_batch_size": 32,
+    "compute_precision": 16,
+    "data_args": {
+        "batch_size": 1,
+        "eval_batch_size": 1,
+        "max_source_length": 3072
+    },
+    "trainer_args": {
+        "gradient_accumulation_steps": 8
+    },
+    "generation": {
+        "max_generation_length": 128
+    }
+}

@@ -1,0 +1,47 @@
+{
+    "exp_dir": null,
+    "exp_name": null,
+    "allow_skip_exp": false,
+    "cache_dir": null,
+    "seed": 42,
+    "model_name_or_path": "facebook/bart-large-xsum",
+    "tokenizer_name_or_path": "facebook/bart-large-xsum",
+    "max_seq_len": 512,
+    "section_sep_token": "</sec>",
+    "include_abstract": false,
+    "max_decoder_length": 256,
+    "gradient_checkpointing": true,
+    "data_args": {
+        "dataset_name": "allenai/mup-full",
+        "test_dataset_name": null,
+        "batch_size": 8,
+        "eval_batch_size": 8,
+        "num_workers": 32,
+        "use_fast_tokenizer": false,
+        "max_source_length": 4096
+    },
+    "compute_precision": 32,
+    "compute_strategy": null,
+    "trainer_args": {
+        "num_steps": 5000,
+        "optimizer": "adam",
+        "scheduler": "linear_decay_with_warmup",
+        "learning_rate": 3e-05,
+        "warmup_steps": 1000,
+        "warmup_ratio": 0.1,
+        "weight_decay": 0.0,
+        "gradient_accumulation_steps": 1,
+        "save_top_k": 1,
+        "limit_val_batches": 0.5,
+        "val_check_interval": 2000,
+        "num_workers": 32
+    },
+    "generation": {
+        "length_penalty": 1.0,
+        "num_beams": 1,
+        "temperature": 1.0,
+        "min_generation_length": 10,
+        "max_generation_length": 256,
+        "no_repeat_ngram_size": 3,
+    }
+}

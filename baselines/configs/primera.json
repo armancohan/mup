@@ -1,0 +1,48 @@
+{
+    "exp_dir": null,
+    "exp_name": null,
+    "allow_skip_exp": false,
+    "cache_dir": null,
+    "seed": 42,
+    "model_name_or_path": "allenai/PRIMERA-arxiv",
+    "tokenizer_name_or_path": "allenai/PRIMERA-arxiv",
+    "max_seq_len": 4096,
+    "section_sep_token": "<doc-sep>",
+    "use_global_attention": true,
+    "include_abstract": false,
+    "max_decoder_length": 256,
+    "data_args": {
+        "dataset_name": "allenai/mup-full",
+        "test_dataset_name": null,
+        "batch_size": 4,
+        "eval_batch_size": 8,
+        "num_workers": 32,
+        "use_fast_tokenizer": false,
+        "max_source_length": 4096
+    },
+    "compute_precision": 16,
+    "gradient_checkpointing": false,
+    "compute_strategy": "ddp",
+    "trainer_args": {
+        "num_steps": 5000,
+        "optimizer": "adam",
+        "scheduler": "linear_decay_with_warmup",
+        "learning_rate": 3e-05,
+        "warmup_steps": 1000,
+        "warmup_ratio": 0.1,
+        "weight_decay": 0.0,
+        "gradient_accumulation_steps": 2,
+        "save_top_k": 1,
+        "limit_val_batches": 0.2,
+        "val_check_interval": 500,
+        "num_workers": 32
+    },
+    "generation": {
+        "length_penalty": 1.0,
+        "num_beams": 1,
+        "temperature": 1.0,
+        "min_generation_length": 10,
+        "max_generation_length": 256,
+        "no_repeat_ngram_size": 3
+    }
+}
