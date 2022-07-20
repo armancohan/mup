@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import argparse
+import json
 import os.path
 import sys
+from collections import defaultdict
 
 import numpy as np
 from tqdm import tqdm
@@ -53,6 +55,7 @@ def evaluate_metrics(test_annotation_file, user_submission_file, use_bertscore=F
         )
 
     bertscore_summaries = ([], [])
+    rouge_by_paper = defaultdict(list)
     for index, ground_truth_row in tqdm(
         ground_truth_df.iterrows(), total=ground_truth_df.shape[0], desc="evaluating summaries..."
     ):
@@ -70,6 +73,8 @@ def evaluate_metrics(test_annotation_file, user_submission_file, use_bertscore=F
 
         # print(f"evaluating summary for article with id '{article_id}'")
         scores = scorer.score(ground_truth_summary.strip(), submission_summary.strip())
+
+        rouge_by_paper[article_id].append(scores)
 
         for rouge_metric in metrics:
             results[rouge_metric + "_f"].append(scores[rouge_metric].fmeasure)
@@ -120,6 +125,7 @@ def main():
         )
 
     eval_scores = evaluate_metrics(test_annotation_file=truth_file, user_submission_file=submission_answer_file)
+    print(json.dumps(eval_scores, indent=4))
     with open(output_filename, "w") as output_file:
         for metric, metric_score in eval_scores.items():
             output_file.write(f"{metric}:{(metric_score * 100):.2f}\n")

@@ -28,6 +28,7 @@ from typing import Optional
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
+import pandas as pd
 import transformers
 from datasets import load_dataset, load_metric
 from filelock import FileLock
@@ -60,9 +61,7 @@ try:
     nltk.data.find("tokenizers/punkt")
 except (LookupError, OSError):
     if is_offline_mode():
-        raise LookupError(
-            "Offline mode: run this script without TRANSFORMERS_OFFLINE first to download nltk data files"
-        )
+        raise LookupError("Offline mode: run this script without TRANSFORMERS_OFFLINE first to download nltk data files")
     with FileLock(".lock") as lock:
         nltk.download("punkt", quiet=True)
 
@@ -124,6 +123,7 @@ class DataTrainingArguments:
     dataset_name: Optional[str] = field(
         default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
     )
+    test_csv_file: Optional[str] = field(default=None, metadata={"help": "The test csv file to use"})
     dataset_config_name: Optional[str] = field(
         default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
     )
@@ -141,8 +141,7 @@ class DataTrainingArguments:
     validation_file: Optional[str] = field(
         default=None,
         metadata={
-            "help": "An optional input evaluation data file to evaluate the metrics (rouge) on "
-            "(a jsonlines or csv file)."
+            "help": "An optional input evaluation data file to evaluate the metrics (rouge) on " "(a jsonlines or csv file)."
         },
     )
     test_file: Optional[str] = field(
@@ -151,9 +150,7 @@ class DataTrainingArguments:
             "help": "An optional input test data file to evaluate the metrics (rouge) on " "(a jsonlines or csv file)."
         },
     )
-    overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
-    )
+    overwrite_cache: bool = field(default=False, metadata={"help": "Overwrite the cached training and evaluation sets"})
     preprocessing_num_workers: Optional[int] = field(
         default=None,
         metadata={"help": "The number of processes to use for the preprocessing."},
@@ -219,9 +216,7 @@ class DataTrainingArguments:
     )
     ignore_pad_token_for_loss: bool = field(
         default=True,
-        metadata={
-            "help": "Whether to ignore the tokens corresponding to padded labels in the loss computation or not."
-        },
+        metadata={"help": "Whether to ignore the tokens corresponding to padded labels in the loss computation or not."},
     )
     source_prefix: Optional[str] = field(
         default="", metadata={"help": "A prefix to add before every source text (useful for T5 models)."}
@@ -277,7 +272,7 @@ def main():
         model_args, data_args, training_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-
+    model_args.gradient_checkpointing = training_args.gradient_checkpointing
     # Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
@@ -422,6 +417,9 @@ def main():
                 "resize the model's position encodings by passing `--resize_position_embeddings`."
             )
 
+    if model_args.gradient_checkpointing:
+        model.enable_gradient_checkpointing()
+
     prefix = data_args.source_prefix if data_args.source_prefix is not None else ""
 
     # Preprocessing the datasets.
@@ -431,7 +429,7 @@ def main():
     elif training_args.do_eval:
         column_names = raw_datasets["validation"].column_names
     elif training_args.do_predict:
-        column_names = raw_datasets["test"].column_names
+        column_names = raw_datasets["validation"].column_names if "test" not in raw_datasets else raw_datasets["test"]
     else:
         logger.info("There is nothing to do. Please pass `do_train`, `do_eval` and/or `do_predict`.")
         return
@@ -458,9 +456,7 @@ def main():
     else:
         text_column = data_args.text_column
         if text_column not in column_names:
-            raise ValueError(
-                f"--text_column' value '{data_args.text_column}' needs to be one of: {', '.join(column_names)}"
-            )
+            raise ValueError(f"--text_column' value '{data_args.text_column}' needs to be one of: {', '.join(column_names)}")
     if data_args.summary_column is None:
         summary_column = dataset_columns[1] if dataset_columns is not None else column_names[1]
     else:
@@ -494,6 +490,20 @@ def main():
         # Setup the tokenizer for targets
         with tokenizer.as_target_tokenizer():
             labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
+
+            if "led" in model_args.model_name_or_path:
+                batch = {}
+                batch["input_ids"] = model_inputs.input_ids
+                batch["attention_mask"] = model_inputs.attention_mask
+                # create 0 global_attention_mask lists
+                batch["global_attention_mask"] = len(batch["input_ids"]) * [[0 for _ in range(len(batch["input_ids"][0]))]]
+                batch["global_attention_mask"][0][0] = 1
+                batch["labels"] = labels.input_ids
+                # We have to make sure that the PAD token is ignored
+                batch["labels"] = [
+                    [-100 if token == tokenizer.pad_token_id else token for token in labels] for labels in batch["labels"]
+                ]
+                return batch
 
         # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
         # padding in the loss.
@@ -542,9 +552,13 @@ def main():
 
     if training_args.do_predict:
         max_target_length = data_args.val_max_target_length
-        if "test" not in raw_datasets:
+        if "test" not in raw_datasets and data_args.test_csv_file is None:
             raise ValueError("--do_predict requires a test dataset")
-        predict_dataset = raw_datasets["test"]
+        if "test" in raw_datasets:
+            predict_dataset = raw_datasets["test"]
+        else:
+            predict_dataset = load_dataset("csv", data_files={"test": data_args.test_csv_file})
+            predict_dataset = predict_dataset["test"]  # need to do this for predict mode
         if data_args.max_predict_samples is not None:
             max_predict_samples = min(len(predict_dataset), data_args.max_predict_samples)
             predict_dataset = predict_dataset.select(range(max_predict_samples))
@@ -624,9 +638,7 @@ def main():
         trainer.save_model()  # Saves the tokenizer too for easy upload
 
         metrics = train_result.metrics
-        max_train_samples = (
-            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
-        )
+        max_train_samples = data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
         trainer.log_metrics("train", metrics)

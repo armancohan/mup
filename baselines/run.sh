@@ -1,13 +1,16 @@
 python run_summarization.py \
-    --model_name_or_path t5-base \
+    --model_name_or_path allenai/led-large-16384-arxiv \
     --do_train \
     --do_eval \
-    --dataset_name allenai/mup \
-    --source_prefix "summarize: " \
-    --output_dir tmp/outputs/ \
-    --per_device_train_batch_size=12 \
-    --per_device_eval_batch_size=16 \
+    --train_file tmp/flattened-data/train.csv \
+    --validation_file tmp/flattened-data/validation.csv \
+    --test_file ../tmp/testing.csv \
+    --source_prefix "" \
+    --output_dir tmp/outputs-/ \
+    --per_device_train_batch_size=1 \
+    --per_device_eval_batch_size=1 \
     --overwrite_output_dir \
     --predict_with_generate \
     --summary_column summary \
+    --max_steps 2000 \
     --text_column text $@

@@ -1,0 +1,11 @@
+python run_summarization.py \
+    --model_name_or_path t5-base \
+    --do_predict \
+    --dataset_name allenai/mup \
+    --source_prefix "summarize: " \
+    --output_dir tmp/outputs/ \
+    --per_device_train_batch_size=12 \
+    --per_device_eval_batch_size=16 \
+    --predict_with_generate \
+    --summary_column summary \
+    --text_column text $@
