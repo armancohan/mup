@@ -135,6 +135,8 @@ codalab/kit/*testing*
 codalab/kit/*reference_data*
 codalab/kit/*Archive.zip
 
-
-
+tmp/
+baselines/tmp
+baselines/exp-out/
+baselines/exp_out/
 
